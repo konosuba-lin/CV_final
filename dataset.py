@@ -7,8 +7,10 @@ import numpy as np
 
 from torchvision.transforms import transforms
 from PIL import Image
-import pickle
+import pickle5
 import random
+
+from cfg import cfg
 
 class AddGaussianNoise(object):
     def __init__(self, mean=0., std=0.01):
@@ -21,18 +23,14 @@ class AddGaussianNoise(object):
     def __repr__(self):
         return self.__class__.__name__ + '(mean={0}, std={1})'.format(self.mean, self.std)
 
-def get_dataset(root, ratio=0.9, cv=0):
-    
-    # get all the images path and the corresponding labels
+def get_dataset_v0(root, ratio=0.9, cv=0):
     with open(root, 'rb') as f:
-        data = pickle.load(f)
+        data = pickle5.load(f)
         images, labels = data
-    
-    N = len(images)
 
-    # apply shuffle to generate random results 
+    N = len(images)
     info = list(zip(images, labels))
-    random.shuffle(info)
+    if(root==cfg['data_root']): random.shuffle(info)
 
     all_images, all_labels = zip(*info)
 
@@ -43,46 +41,46 @@ def get_dataset(root, ratio=0.9, cv=0):
 
     train_label = all_labels[:x] 
     val_label = all_labels[x:]
-    
-    ## TO DO ## 
-    # Define your own transform here 
-    # It can strongly help you to perform data augmentation and gain performance
-    # ref: https://pytorch.org/vision/stable/transforms.html
+
     means = [0.485, 0.456, 0.406]
     stds = [0.229, 0.224, 0.225]
     train_transform = transforms.Compose([
-                ## TO DO ##
-                # You can add some transforms here
-                # transforms.RandomHorizontalFlip(),
-                # transforms.RandomCrop(size=32, padding=4),
-                #transforms.ColorJitter(brightness=0.1, contrast=0.1),
-                #transforms.RandomRotation(degrees=(-10, 10)),
-
-                # ToTensor is needed to convert the type, PIL IMG,  to the typ, float tensor.  
-                transforms.Resize(40),
                 transforms.ToTensor(),
-                # experimental normalization for image classification 
                 transforms.Normalize(means, stds),
-                #AddGaussianNoise(0., 0.02),
             ])
   
     # normally, we dont apply transform to test_set or val_set
     val_transform = transforms.Compose([
-                transforms.Resize(40),
                 transforms.ToTensor(),
                 transforms.Normalize(means, stds),
             ])
+    if(root==cfg['data_root']): #training
+        prefix = './data/synthetics_train'
+        train_set, val_set = cv_dataset(images=train_image, labels=train_label,transform=train_transform,prefix=prefix), \
+                            cv_dataset(images=val_image, labels=val_label,transform=val_transform,prefix=prefix)
+        return train_set, val_set
+    else: #testing
+        prefix = './data/aflw_val'
+        test_set = cv_dataset(images=train_image, labels=train_label,transform=val_transform,prefix=prefix)
+        return test_set
 
- 
-  
-    ## TO DO ##
-    # Complete class cifiar10_dataset
-    train_set, val_set = cv_dataset(images=train_image, labels=train_label,transform=train_transform), \
-                        cv_dataset(images=val_image, labels=val_label,transform=val_transform)
-
-    return train_set, val_set
-
-
+def get_dataset(root):
+    with open(root+'annot.pkl', 'rb') as f:
+        data = pickle5.load(f)
+        images, labels = data
+    N = len(images)
+    info = list(zip(images, labels))
+    if(root==cfg['data_root']): random.shuffle(info)
+    images, labels = zip(*info)
+    means = [0.485, 0.456, 0.406]
+    stds = [0.229, 0.224, 0.225]
+    transform = transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(means, stds),
+            ])
+    data_set = cv_dataset(images=images, labels=labels,transform=transform,prefix=root)
+    return data_set
+        
 
 ## TO DO ##
 # Define your own cifar_10 dataset
