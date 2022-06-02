@@ -3,4 +3,6 @@ save_dir/
 data/
 __pycache__/
 *.png
-
+*.zip
+*.txt
+*.jpg

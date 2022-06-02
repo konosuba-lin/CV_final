@@ -2,6 +2,7 @@ cfg = {
     'model_type': 'LeNet',
     'data_root' : './data/synthetics_train/',
     'eval_root' : './data/aflw_val/',
+    'test_root' : './data/aflw_test/',
     'model_path': './save_dir/LeNet/best_model.pt',
     # ratio of training images and validation images 
     'split_ratio': 0.9,

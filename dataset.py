@@ -7,7 +7,7 @@ import numpy as np
 
 from torchvision.transforms import transforms
 from PIL import Image
-import pickle5
+import pickle
 import random
 
 from cfg import cfg
@@ -25,7 +25,7 @@ class AddGaussianNoise(object):
 
 def get_dataset_v0(root, ratio=0.9, cv=0):
     with open(root, 'rb') as f:
-        data = pickle5.load(f)
+        data = pickle.load(f)
         images, labels = data
 
     N = len(images)
@@ -64,14 +64,19 @@ def get_dataset_v0(root, ratio=0.9, cv=0):
         test_set = cv_dataset(images=train_image, labels=train_label,transform=val_transform,prefix=prefix)
         return test_set
 
-def get_dataset(root):
-    with open(root+'annot.pkl', 'rb') as f:
-        data = pickle5.load(f)
-        images, labels = data
-    N = len(images)
-    info = list(zip(images, labels))
-    if(root==cfg['data_root']): random.shuffle(info)
-    images, labels = zip(*info)
+def get_dataset(root, labeled=True):
+    if labeled is True:
+        with open(root+'annot.pkl', 'rb') as f:
+            data = pickle.load(f)
+            images, labels = data
+        N = len(images)
+        info = list(zip(images, labels))
+        if(root==cfg['data_root']): random.shuffle(info)
+        images, labels = zip(*info)
+    else:
+        images = [x for x in os.listdir(root) if x.endswith(".jpg")]
+        labels = None
+
     means = [0.485, 0.456, 0.406]
     stds = [0.229, 0.224, 0.225]
     transform = transforms.Compose([
@@ -110,8 +115,11 @@ class cv_dataset(Dataset):
         image = Image.open(path)
         image = self.transform(image)
 
-        label = np.array(self.labels[idx])
-        label = label.flatten()
         # You shall return image, label with type "long tensor" if it's training set
-        return image, label
+        if self.labels is not None:
+            label = np.array(self.labels[idx])
+            label = label.flatten()
+            return image, label
+        else:
+            return image
         
