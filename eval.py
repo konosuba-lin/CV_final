@@ -68,8 +68,8 @@ def generate_result(dataset, data_loader, model, device):
             data = data.to(device)
             output = model(data) 
             pred.append(output)
-    print(dataset.images[0])
-    print(pred[0][0].view(68,2))
+    # print(dataset.images[0])
+    # print(pred[0][0].view(68,2))
     f = open('solution.txt', 'w')
     idx = 0
     for batch in pred:
