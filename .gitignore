@@ -4,5 +4,5 @@ data/
 __pycache__/
 *.png
 *.zip
-*.txt
+solution.txt
 *.jpg
