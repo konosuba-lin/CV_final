@@ -93,8 +93,7 @@ def main():
 
     ## TO DO ## 
     # Indicate the model you use here
-    #model = myLeNet(num_out=10) 
-    model = MobileNetV3(model_mode="LARGE", num_classes=136, multiplier=0.5)
+    model = MobileNetV3(model_mode="LARGE", num_classes=136, multiplier=0.75)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     #device = torch.device('cpu')
