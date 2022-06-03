@@ -60,8 +60,7 @@ def train_interface():
 
     ## MODEL DECLARATION ##
     # model = MobileNetV3(model_mode="LARGE", num_classes=num_out, multiplier=0.75)   
-    model = MobileNetV3(model_mode="LARGE", num_classes=num_out, multiplier=0.75)
-    # model = shufflenetv2(num_classes=num_out)
+    model = shufflenetv2(num_classes=num_out)
 
     summary(model.cuda(), input_size=(3, 384, 384))
 

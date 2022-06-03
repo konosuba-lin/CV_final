@@ -46,7 +46,7 @@ def plot_learning_curve(x, y, name):
     pass
 
 def random_rotate(img,label):
-    angle = 90#random.randint(0,360)
+    angle = random.randint(-90, 90)
     img = TF.rotate(img, angle) #counter clockwise
     angle = -angle/180*np.pi # since y axis toward negative
     M = np.array([[np.cos(angle),-np.sin(angle)],[np.sin(angle),np.cos(angle)]])

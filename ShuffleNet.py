@@ -163,7 +163,7 @@ class ShuffleNetV2(nn.Module):
         x = self.classifier(x)
         return x
 
-def shufflenetv2(num_classes, width_mult=1.):
+def shufflenetv2(num_classes, width_mult=1.5):
     model = ShuffleNetV2(num_classes=num_classes, width_mult=width_mult)
     return model
     
