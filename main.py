@@ -7,10 +7,11 @@ import numpy as np
 from torch.utils.data import DataLoader
 import torch.optim as optim 
 import torch.nn as nn
-# from torchsummary import summary
+from torchsummary import summary
 
 #from model import myLeNet
 from MobileNet_v3 import MobileNetV3
+from ShuffleNet import shufflenetv2
 from dataset import get_dataset
 from tool import train, fixed_seed
 
@@ -63,8 +64,13 @@ def train_interface():
     lr = cfg['lr']
     batch_size = cfg['batch_size']
     milestones = cfg['milestones']
+
+    ## MODEL DECLARATION ##
+    # model = MobileNetV3(model_mode="LARGE", num_classes=num_out, multiplier=0.75)
+    model = shufflenetv2(num_classes=num_out)
     
-    model = MobileNetV3(model_mode="SMALL", num_classes=136, multiplier=1.0)#myLeNet(num_out=num_out)
+    summary(model.cuda(), (3, 384, 384))
+
     train_set = get_dataset(root=data_root)
     val_set =   get_dataset(root=eval_root)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
@@ -73,7 +79,7 @@ def train_interface():
     # define your loss function and optimizer to unpdate the model's parameters.
     
     optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
-    #optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+    # optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer,milestones=milestones, gamma=0.1)
     criterion = nn.MSELoss()
     #criterion = NMELoss()
