@@ -4,15 +4,14 @@ cfg = {
     'eval_root' : './data/aflw_val/',
     'model_path': './save_dir/LeNet/best_model.pt',
     # ratio of training images and validation images 
-    'split_ratio': 0.9,
+    #'split_ratio': 0.9,
     # set a random seed to get a fixed initialization 
     'seed': 369,
     
     # training hyperparameters
-    'batch_size': 64,
-    'lr':0.01,
-    'milestones': [3, 6, 9, 12, 15, 18],
+    'batch_size': 32,
+    'lr':0.001,
+    'milestones': [5,10,15],
     'num_out': 68*2,
-    'num_epoch': 30,
-
+    'num_epoch': 20,
 }
