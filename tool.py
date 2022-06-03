@@ -18,8 +18,8 @@ def fixed_seed(myseed):
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(myseed)
         torch.cuda.manual_seed(myseed)
-        
-        
+    
+
 def save_model(model, path):
     print(f'Saving model to {path}...')
     torch.save(model.state_dict(), path)
@@ -46,7 +46,7 @@ def plot_learning_curve(x, y, name):
 def NME_loss(output,label):
     label = label.view(-1,68,2)
     output = output.view(-1,68,2)
-    loss = output-label
+    loss = (output-label)
     loss = loss.cpu().detach().numpy()
     loss = np.mean(np.sqrt(np.sum(np.power(loss,2),axis=2))/384)
     return loss
@@ -60,20 +60,14 @@ def train(model, train_loader, val_loader, num_epoch, log_path, save_path, devic
     overall_val_acc = np.zeros(num_epoch ,dtype = np.float32)
 
     best_acc = 0
-
     for i in range(num_epoch):
         print(f'epoch = {i}')
-        # epcoch setting
         start_time = time.time()
         train_loss = 0.0 
         corr_num = 0
 
-        # training part
-        # start training
         model.train()
         for batch_idx, ( data, label,) in enumerate(tqdm(train_loader)):
-            # put the data and label on the device
-            # note size of data (B,C,H,W) --> B is the batch size
             data = data.to(device)
             label = label.to(device)
             output = model(data) 
@@ -83,6 +77,7 @@ def train(model, train_loader, val_loader, num_epoch, log_path, save_path, devic
             grad_norm = nn.utils.clip_grad_norm_(model.parameters(), max_norm= 5.)
             optimizer.step()
             train_loss += loss.item()
+            #print("NME = {:.2f}".format(NME_loss(output,label)*100))
             corr_num += (1 - NME_loss(output,label))
         scheduler.step()
         train_loss = train_loss / (batch_idx+1)
