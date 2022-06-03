@@ -7,7 +7,9 @@ from tqdm import tqdm
 import os
 import random
 import matplotlib.pyplot as plt
+import torchvision.transforms.functional as TF
 from cfg import cfg
+from scipy.ndimage.interpolation import rotate
 def fixed_seed(myseed):
     np.random.seed(myseed)
     random.seed(myseed)
@@ -40,6 +42,16 @@ def plot_learning_curve(x, y, name):
     plt.savefig("{}.png".format(name))
 
     pass
+
+def random_rotate(img,label):
+    angle = 90#random.randint(0,360)
+    img = TF.rotate(img, angle) #counter clockwise
+    angle = -angle/180*np.pi # since y axis toward negative
+    M = np.array([[np.cos(angle),-np.sin(angle)],[np.sin(angle),np.cos(angle)]])
+    C = np.array([384/2,384/2])
+    for i in range(len(label)):
+        label[i] = M.dot(label[i]-C)+C
+    return img,label
 
 def NME_loss(output,label):
     label = label.view(-1,68,2)
@@ -76,7 +88,7 @@ def train(model,train_loader, val_loader, num_epoch, log_path, save_path, device
             grad_norm = nn.utils.clip_grad_norm_(model.parameters(), max_norm= 5.)
             optimizer.step()
             train_loss += loss.item()
-            #print("NME = {:.2f}".format(NME_loss(output,label)*100))
+            print("NME = {:.2f}".format(NME_loss(output,label)*100))
             corr_num += (1 - NME_loss(output,label))
         scheduler.step()
         train_loss = train_loss / (batch_idx+1)

@@ -8,7 +8,7 @@ import json
 import argparse
 from tqdm import tqdm
 
-from tool import load_parameters, NME_loss, fixed_seed
+from tool import load_parameters, NME_loss, fixed_seed, random_rotate
 from MobileNet_v3 import MobileNetV3
 from dataset import get_dataset
 from cfg import cfg
@@ -24,6 +24,7 @@ def draw(test_set,idx,model,device,save_path):
     path = os.path.join(test_set.prefix, test_set.images[idx])
     img = Image.open(path)
     label = np.array(test_set.labels[idx])
+    img, label = random_rotate(img, label)
     origin_img = cv2.cvtColor(np.asarray(img),cv2.COLOR_RGB2BGR)
     for x, y in label:
         cv2.circle(origin_img, (int(x), int(y)), 2, (0, 0, 255), -1)
@@ -31,7 +32,7 @@ def draw(test_set,idx,model,device,save_path):
     label = torch.tensor(label).view(68,2)
     label = label.to(device)
 
-    itr = 3
+    itr = 1
     for i in range(itr):
         data = test_set.transform(img)
         model.eval()
