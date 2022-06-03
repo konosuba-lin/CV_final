@@ -10,8 +10,9 @@ from PIL import Image
 import pickle
 import random
 import torchvision.transforms.functional as TF
-
+from tool import random_rotate
 from cfg import cfg
+
 
 def get_dataset(root,start=0,end=1,aug=False):
     if labeled is True:
@@ -46,16 +47,17 @@ def get_dataset(root,start=0,end=1,aug=False):
                     transforms.ToTensor(),
                     transforms.Normalize(means, stds),
                     ])
-    data_set = cv_dataset(images=images, labels=labels,transform=transform,prefix=root)
+    data_set = cv_dataset(images=images, labels=labels,transform=transform,prefix=root,aug=aug)
     return data_set
 
 
 class cv_dataset(Dataset):
-    def __init__(self,images , labels=None , transform=None, prefix = None):
+    def __init__(self,images , labels=None , transform=None, prefix = None, aug=False):
         self.images = images 
         self.labels = labels 
         self.transform = transform
         self.prefix = prefix
+        self.aug = aug
         
         print(f'Number of images is {len(self.images)}')
     
@@ -65,6 +67,8 @@ class cv_dataset(Dataset):
     def __getitem__(self, idx):
         path = os.path.join(self.prefix, self.images[idx])
         image = Image.open(path)
+        if(self.aug):
+            image, label = random_rotate(image,label)
         image = self.transform(image)
 
         # You shall return image, label with type "long tensor" if it's training set
