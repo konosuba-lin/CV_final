@@ -12,7 +12,7 @@ from ShuffleNet import shufflenetv2
 from dataset import get_dataset
 from tool import train, fixed_seed
 from cfg import cfg
-from torchinfo import summary
+from torchsummary import summary
 
 class NMELoss(nn.Module):
     def __init__(self):
@@ -63,8 +63,7 @@ def train_interface():
     model = MobileNetV3(model_mode="LARGE", num_classes=num_out, multiplier=0.75)
     # model = shufflenetv2(num_classes=num_out)
 
-    summary(model)
-    # summary(model, input_size=(batch_size, 3, 384, 384))
+    summary(model.cuda(), input_size=(3, 384, 384))
 
     train_set = get_dataset(root=data_root,aug=True)
     val_set   = get_dataset(root=eval_root)

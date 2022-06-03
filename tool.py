@@ -89,7 +89,7 @@ def train(model, train_loader, val_loader, num_epoch, log_path, save_path, devic
             grad_norm = nn.utils.clip_grad_norm_(model.parameters(), max_norm= 5.)
             optimizer.step()
             train_loss += loss.item()
-            print("NME = {:.2f}".format(NME_loss(output,label)*100))
+            # print("NME = {:.2f}".format(NME_loss(output,label)*100))
             corr_num += (1 - NME_loss(output,label))
         scheduler.step()
         train_loss = train_loss / (batch_idx+1)

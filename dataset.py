@@ -14,7 +14,7 @@ from tool import random_rotate
 from cfg import cfg
 
 
-def get_dataset(root,start=0,end=1,aug=False):
+def get_dataset(root, start=0, end=1, aug=False, labeled=True):
     if labeled is True:
         with open(root+'annot.pkl', 'rb') as f:
             data = pickle.load(f)
@@ -67,14 +67,17 @@ class cv_dataset(Dataset):
     def __getitem__(self, idx):
         path = os.path.join(self.prefix, self.images[idx])
         image = Image.open(path)
-        if(self.aug):
-            image, label = random_rotate(image,label)
+        
+        if self.labels is not None:
+            label = np.array(self.labels[idx])
+            if(self.aug):
+                image, label = random_rotate(image,label)
+            label = label.flatten()
+        
         image = self.transform(image)
 
         # You shall return image, label with type "long tensor" if it's training set
         if self.labels is not None:
-            label = np.array(self.labels[idx])
-            label = label.flatten()
             return image, label
         else:
             return image
