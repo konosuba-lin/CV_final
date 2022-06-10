@@ -45,15 +45,70 @@ def plot_learning_curve(x, y, name):
 
     pass
 
-def random_rotate(img,label):
-    angle = random.randint(-90, 90)
-    img = TF.rotate(img, angle) #counter clockwise
+def random_rotate(img, label=[], use_random=True, angle=0):
+    max_rot = 30
+
+    if use_random is True:
+        angle = random.randint(-max_rot, max_rot)
+    else:
+        angle = angle
+    
+    img = TF.rotate(img, angle) # counter clockwise
     angle = -angle/180*np.pi # since y axis toward negative
     M = np.array([[np.cos(angle),-np.sin(angle)],[np.sin(angle),np.cos(angle)]])
     C = np.array([384/2,384/2])
     for i in range(len(label)):
         label[i] = M.dot(label[i]-C)+C
-    return img,label
+    return img, label
+
+
+def random_flip(img, label=np.zeros((68,2)), use_random=True, flip=True):
+    if use_random is True:
+        flip = bool(random.getrandbits(1))
+    else:
+        flip = flip
+
+    output = np.zeros_like(label)
+    output[:,:] = label[:,:]
+
+    if flip is True:
+        img = TF.hflip(img)
+
+        output[:,0] = 384 - output[:,0]
+        idx = [17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1] +\
+        [27,26,25,24,23,22,21,20,19,18] +\
+        [28,29,30,31] +\
+        [36,35,34,33,32] +\
+        [46,45,44,43,48,47] +\
+        [40,39,38,37,42,41] +\
+        [55,54,53,52,51,50,49] +\
+        [60,59,58,57,56] +\
+        [65,64,63,62,61,68,67,66]
+        idx = np.array(idx)-1
+        output = output[idx]
+
+    return img, output
+
+
+def find_angle_from_label(label):
+    between_eyes = label[28]
+    nose = label[33]
+    left_eye = label[39]
+    right_eye = label[42]
+    
+    # find eye mean
+    eye_mean = (left_eye + right_eye)/2
+    # find regression line of 3 points
+    points = np.vstack((eye_mean, between_eyes, nose))
+    slope, _ = np.polyfit(points[:,0], points[:,1], 1)
+
+    # return angle of the line
+    angle = np.arctan(slope)
+    if angle > 0:
+        angle = angle - np.pi/2
+    else:
+        angle = angle + np.pi/2
+    return angle*360/(2*np.pi)
 
 def NME_loss(output,label):
     label = label.view(-1,68,2)
@@ -120,8 +175,8 @@ def train(model, train_loader, val_loader, num_epoch, log_path, save_path, devic
         sec = elp_time % 60
         print('*'*10)
         print('time = {:.4f} MIN {:.4f} SEC, total time = {:.4f} Min {:.4f} SEC '.format(elp_time // 60, elp_time % 60, (end_time-start_train) // 60, (end_time-start_train) % 60))
-        print(f'training loss : {train_loss:.4f} ', f' train acc = {train_acc:.4f}' )
-        print(f'val loss : {val_loss:.4f} ', f' val acc = {val_acc:.4f}' )
+        print(f'training loss : {train_loss:.4f} ', f' train NME = {(1-train_acc)*100:2.2f}' )
+        print(f'val loss : {val_loss:.4f} ', f' val NME = {(1-val_acc)*100:2.2f}' )
         print('========================\n')
 
         with open(log_path, 'a') as f :

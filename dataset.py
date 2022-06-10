@@ -10,7 +10,7 @@ from PIL import Image
 import pickle
 import random
 import torchvision.transforms.functional as TF
-from tool import random_rotate
+from tool import random_rotate, random_flip
 from cfg import cfg
 
 
@@ -41,6 +41,7 @@ def get_dataset(root, start=0, end=1, aug=False, labeled=True):
                     transforms.ColorJitter(brightness=(0, 5), contrast=(0, 5), saturation=(0, 5), hue=(-0.1, 0.1)),
                     transforms.ToTensor(),
                     transforms.Normalize(means, stds),
+                    transforms.RandomErasing(p=0.2),
                     ])
     else:
         transform = transforms.Compose([
@@ -71,7 +72,8 @@ class cv_dataset(Dataset):
         if self.labels is not None:
             label = np.array(self.labels[idx])
             if(self.aug):
-                image, label = random_rotate(image,label)
+                image, label = random_rotate(image, label, use_random=True)
+                image, label = random_flip(image, label, use_random=True)
             label = label.flatten()
         
         image = self.transform(image)
