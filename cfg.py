@@ -1,16 +1,17 @@
 cfg = {
     'model_type': 'ShuffleNet',
     'data_root' : './data/synthetics_train/',
-    'eval_root' : './data/aflw_val/',
+    'eval_root' : './data/aflw_gen/',
     'test_root' : './data/aflw_test/',
     'model_path': './save_dir/ShuffleNet/best_model.pt',
+    # 'model_path': './save_dir/ShuffleNet/best_model_0.75_aug.pt',
     # ratio of training images and validation images 
     # 'split_ratio': 0.9,
     # set a random seed to get a fixed initialization 
-    'seed': 369,
+    'seed': 555,
     
     # training hyperparameters
-    'batch_size': 4,
+    'batch_size': 16,
     'lr':0.001,
     'milestones': [5,10,15],
     'num_out': 68*2,
