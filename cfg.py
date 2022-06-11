@@ -8,10 +8,10 @@ cfg = {
     # ratio of training images and validation images 
     # 'split_ratio': 0.9,
     # set a random seed to get a fixed initialization 
-    'seed': 555,
+    'seed': 222,
     
     # training hyperparameters
-    'batch_size': 16,
+    'batch_size': 32,
     'lr':0.001,
     'milestones': [5,10,15],
     'num_out': 68*2,

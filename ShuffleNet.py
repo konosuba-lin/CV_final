@@ -150,12 +150,12 @@ class ShuffleNetV2(nn.Module):
         self.conv_last = conv_1x1_bn(input_channel, self.stage_out_channels[-1])
         self.globalpool = nn.Sequential(nn.AvgPool2d(2))            
 
-        self.conv_head1 = nn.Sequential(nn.Conv2d(1024, 64, 1, 1, 0, bias=False), nn.BatchNorm2d(64), nn.ReLU(inplace=True))
-        self.conv_head2 = nn.Sequential(nn.Conv2d(64, 32, 3, 1, 0, bias=False), nn.BatchNorm2d(32), nn.ReLU(inplace=True))
-        self.conv_head3 = nn.Sequential(nn.Conv2d(32, 128, 4, 1, 0, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True))
+        self.conv_head1 = nn.Sequential(nn.Conv2d(1024, 16, 1, 1, 0, bias=False), nn.BatchNorm2d(16), nn.ReLU(inplace=True))
+        self.conv_head2 = nn.Sequential(nn.Conv2d(16, 32, 3, 2, 0, bias=False), nn.BatchNorm2d(32), nn.ReLU(inplace=True))
+        self.conv_head3 = nn.Sequential(nn.Conv2d(32, 128, 5, 1, 0, bias=False), nn.BatchNorm2d(128), nn.ReLU(inplace=True))
     
 	    # building classifier
-        self.classifier = nn.Sequential(nn.Linear(2944, num_classes))
+        self.classifier = nn.Sequential(nn.Linear(3232, num_classes))
 
     def forward(self, x):
         x = self.conv1(x)
@@ -163,7 +163,7 @@ class ShuffleNetV2(nn.Module):
         x = self.features(x)
         x = self.conv_last(x)
 
-        x = self.globalpool(x)
+        # x = self.globalpool(x)
 
         x1 = self.conv_head1(x)
         x2 = self.conv_head2(x1)
@@ -171,7 +171,7 @@ class ShuffleNetV2(nn.Module):
         # x2 = self.conv_head2(x)
 
         x1 = x1.view(-1, 2304)
-        x2 = x2.view(-1, 512)
+        x2 = x2.view(-1, 800)
         x3 = x3.view(-1, 128)
 
         x = torch.cat((x1, x2, x3), 1)
