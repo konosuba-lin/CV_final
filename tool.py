@@ -61,7 +61,23 @@ def random_rotate(img, label=[], use_random=True, angle=0):
         label[i] = M.dot(label[i]-C)+C
     return img, label
 
+def random_affine(img, label=[], use_random=True, translate=[0,0], scale=1):
+    max_translate = 10
+    max_scale = 1.15
 
+    if use_random is True:
+        translate = [random.randint(-max_translate, max_translate),random.randint(-max_translate, max_translate)]
+        scale = random.uniform(1/max_scale, max_scale)
+    else:
+        translate = translate
+        scale = scale
+    
+    img = TF.affine(img=img,angle=0,shear=0,translate=translate,scale=scale)
+    c0 = np.array([192,192])
+    c1 = c0 + np.array(translate)
+    label = (label-c0)*scale+c1
+    return img, label
+    
 def random_flip(img, label=np.zeros((68,2)), use_random=True, flip=True):
     if use_random is True:
         flip = bool(random.getrandbits(1))

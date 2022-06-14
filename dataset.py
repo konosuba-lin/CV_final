@@ -10,7 +10,7 @@ from PIL import Image
 import pickle
 import random
 import torchvision.transforms.functional as TF
-from tool import random_rotate, random_flip
+from tool import random_rotate, random_flip, random_affine
 from cfg import cfg
 
 
@@ -72,6 +72,7 @@ class cv_dataset(Dataset):
         if self.labels is not None:
             label = np.array(self.labels[idx])
             if(self.aug):
+                image, label = random_affine(image, label, use_random=True)
                 image, label = random_rotate(image, label, use_random=True)
                 image, label = random_flip(image, label, use_random=True)
             label = label.flatten()
