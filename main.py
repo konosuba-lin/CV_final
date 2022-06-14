@@ -68,8 +68,8 @@ def train_interface():
     val_set   = get_dataset(root=eval_root)
     train_loader = DataLoader(train_set, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-    optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
-    # optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+    # optimizer = optim.Adam(model.parameters(), lr=lr, weight_decay=5e-4)
+    optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer,milestones=milestones, gamma=0.1)
     criterion = NMELoss()
 

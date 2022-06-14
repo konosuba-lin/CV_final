@@ -12,8 +12,8 @@ cfg = {
     
     # training hyperparameters
     'batch_size': 32,
-    'lr':0.001,
-    'milestones': [5,10,15],
+    'lr':0.01,
+    'milestones': [5,10,15,20,25],
     'num_out': 68*2,
     'num_epoch': 30,
 }
