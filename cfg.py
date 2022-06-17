@@ -1,7 +1,7 @@
 cfg = {
     'model_type': 'ShuffleNet',
     'data_root' : './data/synthetics_train/',
-    'eval_root' : './data/aflw_gen/',
+    'eval_root' : './data/aflw_val/',
     'test_root' : './data/aflw_test/',
     'model_path': './save_dir/ShuffleNet/best_model.pt',
     # 'model_path': './save_dir/ShuffleNet/best_model_0.75_aug.pt',
@@ -15,7 +15,7 @@ cfg = {
     'lr':0.01,
     'milestones': [5,10,15,20,25],
     'num_out': 68*2,
-    'num_epoch': 30,
+    'num_epoch': 15,
 }
 
 # cfg = {
