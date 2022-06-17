@@ -256,6 +256,8 @@ def train(model, train_loader, val_loader, num_epoch, log_path, save_path, devic
 
         if  val_acc > best_acc:
             best_acc = val_acc
+            
+        if  i == num_epoch-1: 
             torch.save(model.state_dict(), os.path.join(save_path, 'best_model.pt'))
 
 
