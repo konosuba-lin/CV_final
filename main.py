@@ -7,7 +7,6 @@ import torch.nn as nn
 
 from tool import load_parameters
 
-from MobileNet_v3 import MobileNetV3
 from ShuffleNet import shufflenetv2
 from dataset import get_dataset
 from tool import train, fixed_seed
@@ -59,7 +58,6 @@ def train_interface():
     milestones = cfg['milestones']
 
     ## MODEL DECLARATION ##
-    # model = MobileNetV3(model_mode="LARGE", num_classes=num_out, multiplier=0.75)   
     model = shufflenetv2(num_classes=num_out)
 
     summary(model.cuda(), input_size=(3, 384, 384))

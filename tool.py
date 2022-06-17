@@ -105,6 +105,58 @@ def random_flip(img, label=np.zeros((68,2)), use_random=True, flip=True):
 
     return img, output
 
+def rotate_img(img,angle,flip):
+    #first flip then rotate
+    img2 = img
+    if(flip):
+        img2 = TF.hflip(img2)
+    img2 = TF.rotate(img2, angle) #counter clockwise
+    return img2
+
+def rotate_label(label,angle,flip,dir):
+    if(dir=="forward"): #first flip then rotate
+        label2 = np.zeros_like(label)
+        label2[:,:] = label[:,:]
+        if(flip):
+            label2[:,0] = 384 - label2[:,0]
+            idx = [17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1] +\
+            [27,26,25,24,23,22,21,20,19,18] +\
+            [28,29,30,31] +\
+            [36,35,34,33,32] +\
+            [46,45,44,43,48,47] +\
+            [40,39,38,37,42,41] +\
+            [55,54,53,52,51,50,49] +\
+            [60,59,58,57,56] +\
+            [65,64,63,62,61,68,67,66]
+            idx = np.array(idx)-1
+            label2 = label2[idx]
+        angle = -angle/180*np.pi # since y axis toward negative
+        M = np.array([[np.cos(angle),-np.sin(angle)],[np.sin(angle),np.cos(angle)]])
+        C = np.array([384/2,384/2])
+        for i in range(len(label2)):
+            label2[i] = M.dot(label2[i]-C)+C
+    else: #first rotate then flip
+        label2 = np.zeros_like(label)
+        angle = -angle/180*np.pi # since y axis toward negative
+        M = np.array([[np.cos(angle),-np.sin(angle)],[np.sin(angle),np.cos(angle)]])
+        C = np.array([384/2,384/2])
+        for i in range(len(label2)):
+            label2[i] = M.dot(label[i]-C)+C
+        if(flip):
+            label2[:,0] = 384 - label2[:,0]
+            idx = [17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1] +\
+            [27,26,25,24,23,22,21,20,19,18] +\
+            [28,29,30,31] +\
+            [36,35,34,33,32] +\
+            [46,45,44,43,48,47] +\
+            [40,39,38,37,42,41] +\
+            [55,54,53,52,51,50,49] +\
+            [60,59,58,57,56] +\
+            [65,64,63,62,61,68,67,66]
+            idx = np.array(idx)-1
+            label2 = label2[idx]
+    return label2
+
 
 def find_angle_from_label(label):
     between_eyes = label[28]
