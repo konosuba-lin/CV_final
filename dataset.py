@@ -10,11 +10,11 @@ from PIL import Image
 import pickle
 import random
 import torchvision.transforms.functional as TF
-from tool import random_rotate, random_flip, random_affine
+from tool import random_rotate, random_flip, random_affine, rotate_img
 from cfg import cfg
 
 
-def get_dataset(root, start=0, end=1, aug=False, labeled=True):
+def get_dataset(root, start=0, end=1, aug=False, labeled=True, cvt=[False,0,False]):
     if labeled is True:
         with open(root+'annot.pkl', 'rb') as f:
             data = pickle.load(f)
@@ -34,7 +34,7 @@ def get_dataset(root, start=0, end=1, aug=False, labeled=True):
         stds  = [0.1900145 , 0.18243362, 0.18143885]
     else:
         means = [0.45668155, 0.38590077, 0.33730087]
-        stds  = [0.2911497 , 0.26744193, 0.25331718]
+        stds  = [0.27685005, 0.25711865, 0.24545431]
 
     if aug is True:
         transform = transforms.Compose([
@@ -48,18 +48,18 @@ def get_dataset(root, start=0, end=1, aug=False, labeled=True):
                     transforms.ToTensor(),
                     transforms.Normalize(means, stds),
                     ])
-    data_set = cv_dataset(images=images, labels=labels,transform=transform,prefix=root,aug=aug)
+    data_set = cv_dataset(images=images, labels=labels,transform=transform,prefix=root,aug=aug,cvt=cvt)
     return data_set
 
 
 class cv_dataset(Dataset):
-    def __init__(self,images , labels=None , transform=None, prefix = None, aug=False):
+    def __init__(self,images , labels=None , transform=None, prefix = None, aug=False, cvt=[False,0,False]):
         self.images = images 
         self.labels = labels 
         self.transform = transform
         self.prefix = prefix
         self.aug = aug
-        
+        self.cvt = cvt
         print(f'Number of images is {len(self.images)}')
     
     def __len__(self):
@@ -68,7 +68,7 @@ class cv_dataset(Dataset):
     def __getitem__(self, idx):
         path = os.path.join(self.prefix, self.images[idx])
         image = Image.open(path)
-        
+        cvt_flag, angle, flip = self.cvt
         if self.labels is not None:
             label = np.array(self.labels[idx])
             if(self.aug):
@@ -77,9 +77,9 @@ class cv_dataset(Dataset):
                 image, label = random_flip(image, label, use_random=True)
             label = label.flatten()
         
+        if cvt_flag:
+            image = rotate_img(image,angle,flip)
         image = self.transform(image)
-
-        # You shall return image, label with type "long tensor" if it's training set
         if self.labels is not None:
             return image, label
         else:

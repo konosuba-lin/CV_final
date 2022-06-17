@@ -8,9 +8,7 @@ import json
 import argparse
 from tqdm import tqdm
 
-from tool import load_parameters, NME_loss, fixed_seed, random_rotate, random_flip, find_angle_from_label
-from MobileNet_v3 import MobileNetV3
-from ShuffleNet import shufflenetv2
+from tool import load_parameters, NME_loss, fixed_seed, random_rotate, rotate_img, rotate_label
 from dataset import get_dataset
 from cfg import cfg
 import numpy as np
@@ -18,243 +16,183 @@ import os
 import cv2
 from PIL import Image
 import torchvision.transforms.functional as TF
-
+from ShuffleNet import shufflenetv2
+from matplotlib import pyplot as plt
 import random
-
+from scipy import stats
 # The function help you to calculate accuracy easily
 # Normally you won't get annotation of test label. But for easily testing, we provide you this.
-def draw(test_set,idx,model,device):
-    path = os.path.join(test_set.prefix, test_set.images[idx])
-    image = Image.open(path)
-    data = test_set.transform(image)
-    label = np.array(test_set.labels[idx])
-    T = transforms.ToPILImage()
-    img = T(data)
-    img = cv2.cvtColor(np.asarray(image),cv2.COLOR_RGB2BGR)
+def draw(save_path,label,output,img):
+    cv2_img = cv2.cvtColor(np.asarray(img),cv2.COLOR_RGB2BGR)
     for x, y in label:
-        cv2.circle(img, (int(x), int(y)), 2, (0, 0, 255), -1)
-    label = label.flatten()
-    label = torch.tensor(label)
-    model.eval()
-    with torch.no_grad():
-        model.eval()
-        data = data.to(device)
-        label = label.to(device)
-        output = model(data[None, ...])
-        output = output.view(68,2)
+        cv2.circle(cv2_img, (int(x), int(y)), 2, (0, 0, 255), -1)
     for x, y in output:
-        cv2.circle(img, (int(x), int(y)), 2, (0, 255, 0), -1)
-    cv2.imwrite(test_set.images[idx].replace('image', 'test'), img)
-    print(test_set.images[idx], "NME: ", NME_loss(output,label)*100)
+        cv2.circle(cv2_img, (int(x), int(y)), 2, (0, 255, 0), -1)
+    cv2.imwrite(save_path,cv2_img)
 
-def postprocess(test_set, idx, model, device, save_path="test.png", draw=True, is_eval=True):
-    path = os.path.join(test_set.prefix, test_set.images[idx])
-    img = Image.open(path)
+def box_area(lab):
+    l,r = min(lab[:,0]), max(lab[:,0])
+    t,b = min(lab[:,1]), max(lab[:,1])
+    area = (r-l)*(b-t)
+    return area
 
-    if is_eval is True:
-        label = np.array(test_set.labels[idx])
-        origin_img = cv2.cvtColor(np.asarray(img),cv2.COLOR_RGB2BGR)
-        if draw is True:
-            # cv2.circle(origin_img, (int(label[39][0]), int(label[39][1])), 2, (0, 0, 255), -1) # left eye
-            # cv2.circle(origin_img, (int(label[42][0]), int(label[42][1])), 2, (0, 0, 255), -1) # right eye
-            # cv2.circle(origin_img, (int(label[33][0]), int(label[33][1])), 2, (0, 0, 255), -1) # nose
-            # cv2.circle(origin_img, (int(label[28][0]), int(label[28][1])), 2, (0, 0, 255), -1) # between eyes
-            for x, y in label:
-                cv2.circle(origin_img, (int(x), int(y)), 2, (0, 0, 255), -1)
+def yaw(lab):
+    pl1,pl2,pr1,pr2 = lab[39],lab[36],lab[42],lab[45]
+    r1 = np.linalg.norm(pl1-pl2,ord=2)
+    r2 = np.linalg.norm(pr1-pr2,ord=2)
+    r = r1/r2-r2/r1
+    #r = r1/r2
+    return r
 
-    data = test_set.transform(img)
-    model.eval()
-    with torch.no_grad():
-        model.eval()
-        data = data.to(device)
-        pred_label = model(data[None, ...]).view(68,2)
+def pitch(lab):
+    p1 = (lab[2]+lab[14])/2
+    p2 = lab[33]
+    p = p1-p2
+    theta = np.arctan(p[1]/abs(p[0]))*(180/np.pi)
+    return theta
 
-    pred_label = pred_label.cpu().numpy()
+def roll(lab):
+    p = lab[8]-lab[33]
+    theta = np.arctan(p[0]/abs(p[1]))
+    theta = theta*(180/np.pi)
+    return theta
 
-    flipped_img, _ = random_flip(img=img, use_random=False, flip=True)
-    data = test_set.transform(flipped_img)
-    model.eval()
-    with torch.no_grad():
-        model.eval()
-        data = data.to(device)
-        flipped_label = model(data[None, ...]).view(68,2)
-    
-    flipped_label = flipped_label.cpu().numpy()
+def loss(lab):
+    lab2 = np.zeros_like(lab)
+    lab2[:] = lab[:]
+    idx = [17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1] +\
+    [27,26,25,24,23,22,21,20,19,18] +\
+    [28,29,30,31] +\
+    [36,35,34,33,32] +\
+    [46,45,44,43,48,47] +\
+    [40,39,38,37,42,41] +\
+    [55,54,53,52,51,50,49] +\
+    [60,59,58,57,56] +\
+    [65,64,63,62,61,68,67,66]
+    idx = np.array(idx)-1
+    lab2 = lab2[idx]
+    lab2 = (lab+lab2)/2
+    res = stats.linregress(x=lab2[17:,0], y=lab2[17:,1])
+    loss = (res.rvalue)**2
+    return loss,lab2[17:]
 
-    _, flipped_label = random_flip(img=flipped_img, label=flipped_label, use_random=False, flip=True)
 
-    # output = pred_label
-    output = (flipped_label + pred_label)/2
-    # output = np.median(flipped_label, pred_label)
-
-    # pred_list.append(pred_label.cpu().numpy())
-    
-    # output = np.mean(pred_list, axis=0)
-
-    # rot_list = [0, -2,  2, -4, 4, -6, 6]
-    # pred_list = []
-    # for rot in rot_list:
-    #     rot_img, _ = random_rotate(img=img, use_random=False, angle=rot)
-    #     data = test_set.transform(rot_img)
-    #     model.eval()
-    #     with torch.no_grad():
-    #         model.eval()
-    #         data = data.to(device)
-    #         pred_label = model(data[None, ...]).view(68,2)
-    #     pred_list.append(pred_label.cpu().numpy())
-
-    # print(output)
-    
-    # angle = find_angle_from_label(pred_label.cpu())
-    # print(angle)
-    # max_iter = 10
-    # if abs(angle > 10):
-    # if False:
-    #     for i in range(max_iter):
-    #         img, _ = random_rotate(img=img, use_random=False, angle=-angle)
-    #         data = test_set.transform(img)
-    #         with torch.no_grad():
-    #             model.eval()
-    #             data = data.to(device)
-    #             new_pred_label = model(data[None, ...]).view(68,2)
-            
-    #         new_angle = find_angle_from_label(new_pred_label.cpu())
-    #         print(new_angle)
-
-    #         if abs(new_angle - angle) < 3:
-    #             break
-    #         else:
-    #             angle = new_angle
-    #     output = new_pred_label
-    # else: 
-    #     output = pred_label
-
-    
-    if is_eval is True:
-        output = torch.tensor(output).to(device)
-        if draw is True:
-            for x, y in output:
-                cv2.circle(origin_img, (int(x), int(y)), 2, (255, 0, 0), -1)
-            cv2.imwrite(save_path, origin_img)
-
-        label = torch.tensor(label).to(device)
-        return NME_loss(output, label)*100
-    else:
-        return output
-
-def validation_test(data_loader, model, device):
+def validate_result(eval_loader, model, device, cvt):
     nme = 0;
     model.eval()
+    outputs = []
+    labels = []
+    cvt_flag, angle, flip = cvt
     with torch.no_grad():
         model.eval()
-        acc = 0 
-        for batch_idx, ( data, label,) in enumerate(tqdm(data_loader)):
+        for batch_idx, ( data, label,) in enumerate(tqdm(eval_loader)):
             data = data.to(device)
             label = label.to(device)
-            output = model(data) 
-            acc += (1 - NME_loss(output,label))
+            output = model(data)
+            output = output.view(-1,68,2).cpu().detach().numpy()
+            label = label.view(-1,68,2).cpu().detach().numpy()
+            for i in range(len(output)):
+                if cvt_flag:
+                    output[i] = rotate_label(output[i],-angle,flip,dir="backward")
+                outputs.append(output[i])
+                labels.append(label[i])
+            nme += NME_loss((torch.tensor(output)).to(device),(torch.tensor(label)).to(device))
+    return nme/(batch_idx+1),np.array(outputs),np.array(labels)
 
-    return acc/(batch_idx+1)
+def validating(model,device):
+    print("------------START-------------")
+    eval_root = cfg['eval_root']
+    batch_size = 16
+    cvt_cfgs = [[False,0,False],[True,0,True]]
+    outs = []
+    labs = []
+    for cvt_cfg in cvt_cfgs:
+        eval_set = get_dataset(root=eval_root,cvt=cvt_cfg)
+        eval_loader = DataLoader(eval_set, batch_size=batch_size, shuffle=False)
+        nme,out,lab = validate_result(eval_loader=eval_loader, model=model, device=device, cvt=cvt_cfg)
+        outs.append(out)
+        labs.append(lab)
+        print("cvt_flag: %d, angle: %2d, flip: %d, NME: %.4f "%(cvt_cfg[0],cvt_cfg[1],cvt_cfg[2],nme*100))
 
-def generate_result(dataset, data_loader, model, device):
-    pred = []
+    out = []
+    lab = labs[0] #labs are all equal
+    infos = []
+    nmes = []
+    random.seed(0)
+    weights = np.array([0.25,0.25,0.25,0.25])
+    for i in range(len(outs[0])):
+        candidates = np.array([outs[j][i] for j in range(len(outs))])
+        best_out = np.mean(candidates,axis=0)
+        nme = NME_loss((torch.tensor(best_out)).to(device),(torch.tensor(lab[i])).to(device))
+        nmes.append(nme)
+        out.append(best_out)
+        infos.append([nme*100]+[i])
+        
+    nmes = np.array(nmes)
+    infos = np.array(infos)
+    nme= np.mean(nmes)
+    infos = sorted(infos,key=lambda x:x[0],reverse=False)
+    np.set_printoptions(precision=5)
+    np.set_printoptions(suppress=True)
+    for i in infos[-4:]:
+        print(i)
+    print("-------Validation Result--------")
+    print("NME: %.8f"%(nme*100))
+
+def test_result(test_loader, model, device, cvt):
     model.eval()
+    outputs = []
+    cvt_flag, angle, flip = cvt
     with torch.no_grad():
         model.eval()
-        for batch_idx, data in enumerate(tqdm(data_loader)):
+        for batch_idx, data in enumerate(tqdm(test_loader)):
             data = data.to(device)
-            output = model(data) 
-            pred.append(output)
-    # print(dataset.images[0])
-    # print(pred[0][0].view(68,2))
+            output = model(data)
+            output = output.view(-1,68,2).cpu().detach().numpy()
+            for i in range(len(output)):
+                if cvt_flag:
+                    output[i] = rotate_label(output[i],-angle,flip,dir="backward")
+                outputs.append(output[i])
+    return np.array(outputs)
+
+def testing(model,device):
+    print("------------START-------------")
+    test_root = cfg['test_root']
+    batch_size = 16
+    cvt_cfgs = [[False,0,False],[True,0,True]]
+    outs = []
+    for cvt_cfg in cvt_cfgs:
+        test_set = get_dataset(root=test_root,cvt=cvt_cfg,labeled=False)
+        test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
+        out = test_result(test_loader=test_loader, model=model, device=device, cvt=cvt_cfg)
+        outs.append(out)
+    out = np.median(outs,axis=0)
     f = open('solution.txt', 'w')
-    idx = 0
-    for batch in pred:
-        batch.cpu().detach().numpy().tolist()
-        for result in batch:
-            f.writelines([dataset.images[idx], ' '])
-            lines = [str(x.cpu().detach().numpy()) for x in result]
-            lines = list(' '.join(lines))
-            f.writelines(lines)
-            f.writelines('\n')
-            idx = idx + 1
-    f.close()
-
-def generate_result_with_postprocess(dataset, data_loader, model, device):
-
-    f = open('solution.txt', 'w')
-
-    print(len(dataset))
-    for idx in range(len(dataset)):
-        output = postprocess(dataset, idx, model, device, is_eval=False)
-        output = output.flatten()
-        f.writelines([dataset.images[idx], ' '])
-        lines = [str(x) for x in output]
+    for idx in range(len(out)):
+        f.writelines([test_set.images[idx], ' '])
+        lines = [str(x[0])+' '+str(x[1]) for x in out[idx]]
         lines = list(' '.join(lines))
         f.writelines(lines)
         f.writelines('\n')
-        idx = idx + 1
-
     f.close()
-    
+    print("---Finish Generating Result----")
+
 
 def main():
     model_path = cfg['model_path']
-    eval_root = './data/aflw_val/'
-    test_root = cfg['test_root']
-    batch_size = cfg['batch_size']
-    num_out = cfg['num_out']
     seed = cfg['seed']
     # fixed random seed
-    fixed_seed(seed)
+    fixed_seed(369)
 
-    # Indicate the model you use here
-    # model = MobileNetV3(model_mode="LARGE", num_classes=num_out, multiplier=0.75)
-    model = shufflenetv2(num_classes=num_out)
-    
+    #model = MobileNetV3(model_mode="LARGE", num_classes=136, multiplier=0.75)
+    model = shufflenetv2(num_classes=136)
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    # device = torch.device('cpu')
-    
-    # Simply load parameters
     load_parameters(model=model, path=model_path)
     model.to(device)
 
-    val_set = get_dataset(root=eval_root)    
-    val_loader = DataLoader(val_set, batch_size=batch_size, shuffle=False)
-
-    print("\n######## validating... ########")
-
-    idx = 44
-    testNME = postprocess(val_set, idx, model, device, save_path="test.jpg")
-    print("TEST NME: ", testNME)
-    
-    LOSS = []
-    for i in range(len(val_set)):
-        LOSS.append(postprocess(val_set, i, model, device, draw=False, is_eval=True))
-    LOSS = np.array(LOSS)
-
-    print(LOSS.shape)
-    print("MAX LOSS =", max(LOSS), "at image", np.argmax(LOSS))
-    print("Total validation NME: ", sum(LOSS)/len(val_set))
-    
-    acc = validation_test(data_loader=val_loader, model=model, device=device)
-    print("Total validation NME: ", (1 - acc)*100)
-    
-    # ##### choose your image number to be test #####
-    # # you can choose the test image you want
-    # test_image = random.randint(0, len(val_set)-1)
-    # # test_image = 2
-    # print("\n######## testing random sample... ########")
-    # draw(val_set, test_image, model, device)
-
-    ##### generate solution #####
-    print("\n######## generating solution... ########")
-    test_set = get_dataset(root=test_root, labeled=False)    
-    test_loader = DataLoader(test_set, batch_size=batch_size, shuffle=False)
-    generate_result_with_postprocess(dataset=test_set, data_loader=test_loader, model=model, device=device)
-
-    print("\n!!!!! Note: The output is solution.txt and submission.zip !!!!!")
-
+    #validating(model,device)
+    #affine_test(model,device,0)
+    testing(model,device)
     
 if __name__ == '__main__':
     main()
